@@ -1,51 +1,26 @@
-import torch
 import torch.nn as nn
 import torchvision.models as models
-
-class CNNInceptionEncoder(nn.Module):
-
-    def __init__(self, embed_size):
-        super(CNNInceptionEncoder, self).__init__()
-
-        self.inception = models.inception_v3(pretrained=True, aux_logits=False)
-        self.inception.fc = nn.Linear(self.inception.fc.in_features, embed_size)
-
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.5)
-
-    def forward(self, input):
-        features = self.inception(input)
-
-        return self.dropout(self.relu(features)) 
 
 class CNNResnetEncoder(nn.Module):
 
     def __init__(self, embed_size):
         super(CNNResnetEncoder, self).__init__()
 
-        # self.inception = models.inception_v3(pretrained=True, aux_logits=False)
-        # self.inception.fc = nn.Linear(self.inception.fc.in_features, embed_size)
+        resnet = models.resnet101(weights=models.ResNet101_Weights.DEFAULT)
+        for p in resnet.parameters():
+            p.requires_grad = False
+
+        modules = list(resnet.children())[:-1]
+        self.resnet = nn.Sequential(*modules)
 
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.5)
 
-    def forward(self, input):
-        # features = self.inception(input)
-
-        return self.dropout(self.relu(features)) 
-
-class CNNCLIPEncoder(nn.Module):
-
-    def __init__(self, embed_size):
-        super(CNNCLIPEncoder, self).__init__()
-
-        # self.inception = models.inception_v3(pretrained=True, aux_logits=False)
-        # self.inception.fc = nn.Linear(self.inception.fc.in_features, embed_size)
-
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.5)
+        self.linear = nn.Linear(resnet.fc.in_features, embed_size)
 
     def forward(self, input):
-        # features = self.inception(input)
+        features = self.resnet(input)
+        features = features.view(features.size(0), -1)
+        features = self.linear(features)
 
         return self.dropout(self.relu(features)) 
