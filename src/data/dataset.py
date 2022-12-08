@@ -33,7 +33,7 @@ class FlickrDataset(Dataset):
             a[1: -1] = sent[:self.max_length-2]
             a[self.max_length-1] = self.sentence_tokenizer.eos_id
 
-        return image, torch.from_numpy(a)
+        return data["id"], image, torch.from_numpy(a)
 
     def load_image(self, path):
         with open(f"{DATA_DIR}/Images/{path}", 'rb') as f:

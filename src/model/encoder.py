@@ -13,8 +13,8 @@ class CNNResnetEncoder(nn.Module):
         modules = list(resnet.children())[:-1]
         self.resnet = nn.Sequential(*modules)
 
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.5)
+        # self.relu = nn.ReLU()
+        # self.dropout = nn.Dropout(0.5)
 
         self.linear = nn.Linear(resnet.fc.in_features, embed_size)
 
@@ -23,4 +23,4 @@ class CNNResnetEncoder(nn.Module):
         features = features.view(features.size(0), -1)
         features = self.linear(features)
 
-        return self.dropout(self.relu(features)) 
+        return features 

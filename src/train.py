@@ -4,6 +4,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
+import json
 
 import sys
 import os
@@ -34,7 +35,7 @@ def train(tokenizer):
 
         model.train()
 
-        for i, (images, captions) in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc="Training Step"):
+        for i, (img_id, images, captions) in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc="Training Step"):
             images = images.to(DEVICE)
             captions = captions.to(DEVICE)
 
@@ -76,7 +77,7 @@ def validation_loop(val_dataloader, model, criterion):
 
     losses = []
     with torch.no_grad():
-        for i, (images, captions) in tqdm(enumerate(val_dataloader), total=len(val_dataloader), desc="Validation Step"):
+        for i, (img_id, images, captions) in tqdm(enumerate(val_dataloader), total=len(val_dataloader), desc="Validation Step"):
             images = images.to(DEVICE)
             captions = captions.to(DEVICE)
 
@@ -88,36 +89,52 @@ def validation_loop(val_dataloader, model, criterion):
     return np.average(losses)
 
 
-def test(model, tokenizer):
-    dataset_test = FlickrDataset("test", tokenizer=tokenizer, preprocess=PREPROCESS, max_length=MAX_WORD_LENGTH)
-    test_dataloader = DataLoader(dataset_test, batch_size=1, shuffle=True, num_workers=NUM_WORKERS)
+def test(model_path, tokenizer, preprocess, device, max_length=32, num_workers=4):
+    print("Loading testing dataset")
+    dataset_test = FlickrDataset("test", tokenizer=tokenizer, preprocess=preprocess, max_length=max_length)
+    test_dataloader = DataLoader(dataset_test, batch_size=1, shuffle=True, num_workers=num_workers)
 
+    print("Loading Model")
+    model_data = torch.load(model_path, map_location="cpu")
+
+    model = Encoder_Decoder(model_data["embed_size"], model_data["hidden_size"], model_data["vocab_size"]).to(device)
+    model.load_state_dict(model_data["model_state"], strict=False)
     model.eval()
+
+    print("Done")
+
+    values = { }
+
     with torch.no_grad():
-        for images, _ in tqdm(test_dataloader, total=len(test_dataloader), desc="Testing"):
-            images = images.to(DEVICE)
-            captions = torch.zeros(1, 1).long().to(DEVICE)
-            out_captions = []
+        for img_id, images, _ in tqdm(test_dataloader, total=len(test_dataloader), desc="Testing"):
+            images = images.to(device)
+            images = model.cnn(images).unsqueeze(dim=1)
 
-            for i in range(MAX_WORD_LENGTH):
-                outputs = model(images, captions)
-                predicted = outputs.argmax(1)
+            out_captions = model.decoderRNN.predict(images, max_length)
 
-                out_captions.append(predicted.item())
-                captions = predicted.unsqueeze(1)
+            raw_output = tokenizer.decode(out_captions).split(" ")
+            try:
+                x = raw_output.index("<EOS>")
+            except:
+                x = len(raw_output)
 
-            print('Generated caption:', tokenizer.decode(out_captions))
+            final_out = raw_output[1:x]
 
+            sent = ' '.join(final_out)
+
+            values[img_id[0]] = sent
+
+    return values 
 
 
 if __name__ == "__main__":
-    CHECKPOINT_PATH = "./checkpoints/resent"
+    CHECKPOINT_PATH = "./checkpoints/resent_no_dropout_attention"
 
     if not os.path.exists(CHECKPOINT_PATH):
         os.makedirs(CHECKPOINT_PATH)
 
-    NUM_EPOCHS = 100
-    BATCH_SIZE = 512
+    NUM_EPOCHS = 500
+    BATCH_SIZE = 50
     NUM_WORKERS = 4
 
     VAL_STEP = 1
@@ -144,3 +161,4 @@ if __name__ == "__main__":
     VOCAB_SIZE = tokenizer.vocab_size
 
     train(tokenizer)
+    # test(f"{CHECKPOINT_PATH}/best.pth", tokenizer)
