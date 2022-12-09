@@ -18,7 +18,7 @@ if __name__ == "__main__":
         for d in gt:
             gt_values[d["id"]] = d["caption"]
 
-    CHECKPOINT_PATH = "./checkpoints/resent_no_dropout"
+    CHECKPOINT_PATH = "./checkpoints/resent"
 
     NUM_WORKERS = 4
 

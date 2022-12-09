@@ -128,7 +128,7 @@ def test(model_path, tokenizer, preprocess, device, max_length=32, num_workers=4
 
 
 if __name__ == "__main__":
-    CHECKPOINT_PATH = "./checkpoints/resent_no_dropout_attention"
+    CHECKPOINT_PATH = "./checkpoints/resent_attention"
 
     if not os.path.exists(CHECKPOINT_PATH):
         os.makedirs(CHECKPOINT_PATH)

@@ -9,7 +9,8 @@ class DecoderRNN(nn.Module):
         self.lstm = nn.LSTM(embed_size, hidden_size, batch_first=True)
         self.linear = nn.Linear(hidden_size, vocab_size)
 
-        # self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(0.5)
+        # self.dropout = lambda x: x
 
         self.hidden_size = hidden_size
 
@@ -19,7 +20,7 @@ class DecoderRNN(nn.Module):
         captions = captions[:, :-1]
         self.hidden = self.get_init_hidden(features.size(dim=0), features.device)
 
-        embeds = self.embed(captions)
+        embeds = self.dropout(self.embed(captions))
 
         features = features.unsqueeze(dim=1)
 
@@ -40,11 +41,11 @@ class DecoderRNN(nn.Module):
         final_output = []
         hidden = self.get_init_hidden(batch_size, features.device)
 
-        while True:    
+        while True:
             ###
             # Attention
             ###
-            features = self.attention(features, hidden[0])
+            # features = self.attention(features, hidden[0]).T
 
             lstm_out, hidden = self.lstm(features, hidden)
             outputs = self.linear(lstm_out)
@@ -56,8 +57,8 @@ class DecoderRNN(nn.Module):
 
             if (len(final_output) >= max_length):
                 break
-            
-            features = self.embed(max_idx)
+
+            features = self.dropout(self.embed(max_idx))
             features = features.unsqueeze(1)
 
         return final_output
